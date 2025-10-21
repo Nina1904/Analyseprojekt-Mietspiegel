@@ -8,24 +8,20 @@ library(ggplot2)
 library(tidyr)    
 library(readxl)
 library(e1071) 
+library(scales)
 
-excel_sheets("Daten zum Müncher Mietpreisspiegel.xlsx")
+excel_sheets("Beispiel Mietspiegel - korrigiert.xlsx")
 
-data <- read_excel("Daten zum Müncher Mietpreisspiegel.xlsx", sheet = "Daten")
+data <- read_excel("Beispiel Mietspiegel - korrigiert.xlsx", sheet = "Daten")
 
 str(data)   
 colSums(is.na(data))
 
 sapply(data, class)
-data$nm <- as.numeric(data$nm) 
-
-data <- subset(data, select = -kueche)
-
-sapply(data, class)
+# alle Variablen sind nummeric
 
 # 1. Nettomiete (nm)
 summary(data$nm)
-sum(is.na(data$nm))  
 sd(data$nm, na.rm=TRUE)
 skewness(data$nm, na.rm=TRUE)
 kurtosis(data$nm, na.rm=TRUE)
@@ -42,8 +38,6 @@ Mode <- function(x) {
 }
 Mode(data$nm)
 
-summary(data$nm[data$nm <= 0])  
-
 # Histogram
 ggplot(data, aes(x = nm)) +
   geom_histogram(binwidth = 50, fill = "steelblue", color = "white") +
@@ -54,10 +48,8 @@ ggplot(data, aes(y = nm)) +
   geom_boxplot(fill = "tomato", color = "black") +
   labs(title = "Boxplot der Nettomiete", y = "Nettomiete (EUR)")
 
-
 # 2. Wohnfläche 
 summary(data$wfl)
-sum(is.na(data$wfl))
 
 sd(data$wfl, na.rm=TRUE)
 skewness(data$wfl, na.rm=TRUE)
@@ -74,8 +66,6 @@ Mode <- function(x) {
 }
 Mode(data$wfl)
 
-summary(data$wfl[data$wfl <= 0]) 
-
 
 # Histogram
 ggplot(data, aes(x = wfl)) +
@@ -90,7 +80,7 @@ ggplot(data, aes(y = wfl)) +
 
 # 3. Zimmer
 
- 
+
 summary(data$rooms)
 sum(is.na(data$rooms))
 
@@ -107,7 +97,7 @@ Mode <- function(x) {
 }
 Mode(data$rooms)
 
-summary(data$rooms[data$rooms <= 0])
+
 
 ggplot(data, aes(x = factor(rooms, levels = 1:6))) +
   geom_bar(fill = "skyblue", color = "black") +
@@ -136,7 +126,6 @@ Mode <- function(x) {
 }
 Mode(data$bj)
 
-summary(data$bj[data$bj < 1800 | data$bj > 2025])
 
 # Histogram
 ggplot(data, aes(x = bj)) +
@@ -149,182 +138,200 @@ ggplot(data, aes(y = bj)) +
   labs(title = "Baujahr", y = "Baujahr",  x = "")
 
 
+# 5. Wohnlage
 
-# 5. Wohngut
+data$lage3 <- with(
+  data,
+  ifelse(wohnbest == 1, "Beste",
+         ifelse(wohngut == 1, "Gut", "Normal"))
+)
 
-library(ggplot2)
-library(scales)
+
+data$lage3 <- factor(data$lage3, levels = c("Normal", "Gut", "Beste"), ordered = TRUE)
 
 
-print(table(factor(data$wohngut, levels = c(0,1), labels = c("Nein","Ja"))))
-print(round(prop.table(table(factor(data$wohngut, levels = c(0,1), labels = c("Nein","Ja")))) * 100, 1))
+print(table(data$lage3))
+print(round(prop.table(table(data$lage3)) * 100, 1))
 
-sum(is.na(data$wohngut))
-
-ggplot(data, aes(x = factor(wohngut, levels = c(0,1), labels = c("Nein","Ja")),
-                 fill = factor(wohngut, levels = c(0,1), labels = c("Nein","Ja")))) +
+ggplot(data, aes(x = lage3, fill = lage3)) +
   geom_bar(color = "black") +
-  scale_fill_manual(values = c("Nein" = "red", "Ja" = "green3")) +
-  labs(title = "Wohnungen in guter Wohnlage",
+  scale_fill_manual(values = c("Normal" = "lightgreen",
+                               "Gut"    = "yellow",
+                               "Beste"  = "skyblue")) +
+  labs(title = "Absolute Häufigkeit der Wohnlage",
+       x = "Lage",
+       y = "Anzahl") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggplot(data, aes(x = lage3, fill = lage3)) +
+  geom_bar(aes(y = after_stat(count)/sum(after_stat(count))),
+           color = "black") +
+  scale_y_continuous(labels = percent_format()) +
+  scale_fill_manual(values = c("Normal" = "lightgreen",
+                               "Gut"    = "yellow",
+                               "Beste"  = "skyblue")) +
+  labs(title = "Relative Häufigkeit der Wohnlage",
+       x = "Lage",
+       y = "Anteil in Prozent") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+# 6.Warmwasserversorgung
+
+data$ww <- ifelse(data$ww0 == 1, 0, 1)
+print(table(data$ww))
+
+print(table(factor(data$ww, levels = c(0,1), labels = c("Nein","Ja"))))
+print(round(prop.table(table(factor(data$ww, levels = c(0,1), labels = c("Nein","Ja")))) * 100, 1))
+
+sum(is.na(data$ww))
+
+
+ggplot(data, aes(x = factor(ww, levels = c(0,1), labels = c("Nein","Ja")),
+                 fill = factor(ww, levels = c(0,1), labels = c("Nein","Ja")))) +
+  geom_bar(color = "black") +
+  scale_fill_manual(values = c("Nein" = "yellow", "Ja" = "skyblue")) +
+  labs(title = "Absolute Häufigkeit der Warmwasserversorgung",
        x = "",
        y = "Anzahl") +
   theme_minimal() +
   theme(legend.position = "none")
 
 
-ggplot(data, aes(x = factor(wohngut, levels = c(0,1), labels = c("Nein","Ja")),
-                 fill = factor(wohngut, levels = c(0,1), labels = c("Nein","Ja")))) +
+ggplot(data, aes(x = factor(ww, levels = c(0,1), labels = c("Nein","Ja")),
+                 fill = factor(ww, levels = c(0,1), labels = c("Nein","Ja")))) +
   geom_bar(aes(y = after_stat(count)/sum(after_stat(count))), color = "black") +
   scale_fill_manual(values = c("Nein" = "yellow", "Ja" = "skyblue")) +
   scale_y_continuous(labels = percent_format()) +
-  labs(title = "Wohnungen in guter Wohnlage",
-       x = "Gute Wohnlage",
+  labs(title = "Relative Häufigkeit der Warmwasserversorgung",
+       x = "",
        y = "Anteil in Prozent") +
   theme_minimal() +
   theme(legend.position = "none")
 
+# 7. Znetralheitzung 
 
-# 6.Wohnbest
+data$zh <- ifelse(data$zh0 == 1, 0, 1)
+print(table(data$zh))
 
-print(table(factor(data$wohnbest, levels = c(0,1), labels = c("Nein","Ja"))))
-print(round(prop.table(table(factor(data$wohnbest, levels = c(0,1), labels = c("Nein","Ja")))) * 100, 1))
+print(table(factor(data$zh, levels = c(0,1), labels = c("Nein","Ja"))))
+print(round(prop.table(table(factor(data$zh, levels = c(0,1), labels = c("Nein","Ja")))) * 100, 1))
 
-sum(is.na(data$wohnbest))
+sum(is.na(data$zh))
 
-ggplot(data, aes(x = factor(wohnbest, levels = c(0,1), labels = c("Nein","Ja")),
-                 fill = factor(wohnbest, levels = c(0,1), labels = c("Nein","Ja")))) +
+
+ggplot(data, aes(x = factor(zh, levels = c(0,1), labels = c("Nein","Ja")),
+                 fill = factor(zh, levels = c(0,1), labels = c("Nein","Ja")))) +
   geom_bar(color = "black") +
   scale_fill_manual(values = c("Nein" = "yellow", "Ja" = "skyblue")) +
-  labs(title = "Wohnungen in bester Wohnlage",
+  labs(title = "Absolute Häufigkeit der Zentralheizung",
        x = "",
        y = "Anzahl") +
   theme_minimal() +
   theme(legend.position = "none")
 
 
-ggplot(data, aes(x = factor(wohnbest, levels = c(0,1), labels = c("Nein","Ja")),
-                 fill = factor(wohnbest, levels = c(0,1), labels = c("Nein","Ja")))) +
+ggplot(data, aes(x = factor(zh, levels = c(0,1), labels = c("Nein","Ja")),
+                 fill = factor(zh, levels = c(0,1), labels = c("Nein","Ja")))) +
   geom_bar(aes(y = after_stat(count)/sum(after_stat(count))), color = "black") +
   scale_fill_manual(values = c("Nein" = "yellow", "Ja" = "skyblue")) +
   scale_y_continuous(labels = percent_format()) +
-  labs(title = "Wohnungen in bester Wohnlage",
-       x = "Beste Wohnlage",
+  labs(title = "Relative Häufigkeit der Zentralheizung",
+       x = "",
        y = "Anteil in Prozent") +
   theme_minimal() +
   theme(legend.position = "none")
 
-# 7.Warmwasserversorgung
+# 8. Gekacheltes Badezimmer
 
-print(table(factor(data$ww0, levels = c(1,0), labels = c("Nein","Ja"))))
-print(round(prop.table(table(factor(data$ww0, levels = c(1,0), labels = c("Nein","Ja")))) * 100, 1))
+data$badkach <- ifelse(data$badkach0 == 1, 0, 1)
 
-sum(is.na(data$ww0))
+print(table(factor(data$badkach, levels = c(0,1), labels = c("Nein","Ja"))))
+print(round(prop.table(table(factor(data$badkach, levels = c(0,1), labels = c("Nein","Ja")))) * 100, 1))
+sum(is.na(data$badkach))
 
-ggplot(data, aes(x = factor(ww0, levels = c(1,0), labels = c("Nein","Ja")),
-                 fill = factor(ww0, levels = c(1,0), labels = c("Nein","Ja")))) +
+
+ggplot(data, aes(x = factor(badkach, levels = c(0,1), labels = c("Nein","Ja")),
+                 fill = factor(badkach, levels = c(0,1), labels = c("Nein","Ja")))) +
   geom_bar(color = "black") +
   scale_fill_manual(values = c("Nein" = "yellow", "Ja" = "skyblue")) +
-  labs(title = "Warmwasserversorgung",
+  labs(title = "Absolute Häufigkeit des gekachelten Badezimmers",
        x = "",
        y = "Anzahl") +
   theme_minimal() +
   theme(legend.position = "none")
 
-ggplot(data, aes(x = factor(ww0, levels = c(1, 0), labels = c("Nein","Ja")),
-                 fill = factor(ww0, levels = c(1, 0), labels = c("Nein","Ja")))) +
+
+ggplot(data, aes(x = factor(badkach, levels = c(0,1), labels = c("Nein","Ja")),
+                 fill = factor(badkach, levels = c(0,1), labels = c("Nein","Ja")))) +
   geom_bar(aes(y = after_stat(count)/sum(after_stat(count))), color = "black") +
   scale_fill_manual(values = c("Nein" = "yellow", "Ja" = "skyblue")) +
   scale_y_continuous(labels = percent_format()) +
-  labs(title = "Warmwasserversorgung",
-       x = "Warmwasserversorgung",
-       y = "Anteil in Prozent") +
-  theme_minimal() +
-  theme(legend.position = "none")
-
-# 8. Znetralheitzung 
-
-print(table(factor(data$zh0, levels = c(1,0), labels = c("Nein","Ja"))))
-print(round(prop.table(table(factor(data$zh0, levels = c(1,0), labels = c("Nein","Ja")))) * 100, 1))
-
-sum(is.na(data$zh0))
-
-ggplot(data, aes(x = factor(zh0, levels = c(1,0), labels = c("Nein","Ja")),
-                 fill = factor(zh0, levels = c(1,0), labels = c("Nein","Ja")))) +
-  geom_bar(color = "black") +
-  scale_fill_manual(values = c("Nein" = "yellow", "Ja" = "skyblue")) +
-  labs(title = "Znetralheitzung ",
+  labs(title = "Relative Häufigkeit des gekachelten Badezimmers",
        x = "",
-       y = "Anzahl") +
-  theme_minimal() +
-  theme(legend.position = "none")
-
-ggplot(data, aes(x = factor(zh0, levels = c(1, 0), labels = c("Nein","Ja")),
-                 fill = factor(zh0, levels = c(1, 0), labels = c("Nein","Ja")))) +
-  geom_bar(aes(y = after_stat(count)/sum(after_stat(count))), color = "black") +
-  scale_fill_manual(values = c("Nein" = "yellow", "Ja" = "skyblue")) +
-  scale_y_continuous(labels = percent_format()) +
-  labs(title = "Zentralheitzung ",
-       x = "Zentralheitzung ",
        y = "Anteil in Prozent") +
   theme_minimal() +
   theme(legend.position = "none")
 
-# 9. Gekacheltes Badezimmer
-
-
-print(table(factor(data$badkach0, levels = c(1,0), labels = c("Nein","Ja"))))
-print(round(prop.table(table(factor(data$badkach0, levels = c(1,0), labels = c("Nein","Ja")))) * 100, 1))
-
-sum(is.na(data$badkach0))
-
-ggplot(data, aes(x = factor(badkach0, levels = c(1,0), labels = c("Nein","Ja")),
-                 fill = factor(badkach0, levels = c(1,0), labels = c("Nein","Ja")))) +
-  geom_bar(color = "black") +
-  scale_fill_manual(values = c("Nein" = "yellow", "Ja" = "skyblue")) +
-  labs(title = "Gekacheltes Badezimmer",
-       x = "",
-       y = "Anzahl") +
-  theme_minimal() +
-  theme(legend.position = "none")
-
-ggplot(data, aes(x = factor(badkach0, levels = c(1, 0), labels = c("Nein","Ja")),
-                 fill = factor(badkach0, levels = c(1, 0), labels = c("Nein","Ja")))) +
-  geom_bar(aes(y = after_stat(count)/sum(after_stat(count))), color = "black") +
-  scale_fill_manual(values = c("Nein" = "yellow", "Ja" = "skyblue")) +
-  scale_y_continuous(labels = percent_format()) +
-  labs(title = "Gekacheltes Badezimmer",
-       x = "Gekacheltes Badezimmer",
-       y = "Anteil in Prozent") +
-  theme_minimal() +
-  theme(legend.position = "none")
-
-# 10. Besondere Zusatzausstattung im Bad
-
+# 9. Besondere Zusatzausstattung im Bad
 
 print(table(factor(data$badextra, levels = c(0,1), labels = c("Nein","Ja"))))
 print(round(prop.table(table(factor(data$badextra, levels = c(0,1), labels = c("Nein","Ja")))) * 100, 1))
 
 sum(is.na(data$badextra))
 
+
 ggplot(data, aes(x = factor(badextra, levels = c(0,1), labels = c("Nein","Ja")),
                  fill = factor(badextra, levels = c(0,1), labels = c("Nein","Ja")))) +
   geom_bar(color = "black") +
   scale_fill_manual(values = c("Nein" = "yellow", "Ja" = "skyblue")) +
-  labs(title = "Gekacheltes Badezimmer",
+  labs(title = "Absolute Häufigkeit: Besondere Zusatzausstattung im Bad",
        x = "",
        y = "Anzahl") +
   theme_minimal() +
   theme(legend.position = "none")
+
 
 ggplot(data, aes(x = factor(badextra, levels = c(0, 1), labels = c("Nein","Ja")),
                  fill = factor(badextra, levels = c(0, 1), labels = c("Nein","Ja")))) +
   geom_bar(aes(y = after_stat(count)/sum(after_stat(count))), color = "black") +
   scale_fill_manual(values = c("Nein" = "yellow", "Ja" = "skyblue")) +
   scale_y_continuous(labels = percent_format()) +
-  labs(title = "Gekacheltes Badezimmer",
-       x = "Besondere Zusatzausstattung im Bad",
+  labs(title = "Relative Häufigkeit: Besondere Zusatzausstattung im Bad",
+       x = "",
        y = "Anteil in Prozent") +
   theme_minimal() +
   theme(legend.position = "none")
 
 
+
+# 10. Gehobene Küche
+
+print(table(factor(data$kueche, levels = c(0,1), labels = c("Nein","Ja"))))
+print(round(prop.table(table(factor(data$kueche, levels = c(0,1), labels = c("Nein","Ja")))) * 100, 1))
+
+sum(is.na(data$kueche))
+
+ggplot(data, aes(x = factor(kueche, levels = c(0,1), labels = c("Nein","Ja")),
+                 fill = factor(kueche, levels = c(0,1), labels = c("Nein","Ja")))) +
+  geom_bar(color = "black") +
+  scale_fill_manual(values = c("Nein" = "yellow", "Ja" = "skyblue")) +
+  labs(title = "Absolute Häufigkeit die gehobene Küche",
+       x = "",
+       y = "Anzahl") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+ggplot(data, aes(x = factor(kueche, levels = c(0, 1), labels = c("Nein","Ja")),
+                 fill = factor(kueche, levels = c(0, 1), labels = c("Nein","Ja")))) +
+  geom_bar(aes(y = after_stat(count)/sum(after_stat(count))), color = "black") +
+  scale_fill_manual(values = c("Nein" = "yellow", "Ja" = "skyblue")) +
+  scale_y_continuous(labels = percent_format()) +
+  labs(title = "Relative Häufigkeit die gehobene Küche",
+       x = "",
+       y = "Anteil in Prozent") +
+  theme_minimal() +
+  theme(legend.position = "none")
