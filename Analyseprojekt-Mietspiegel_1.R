@@ -127,6 +127,12 @@ Mode <- function(x) {
 Mode(data$bj)
 
 
+data$bj[!round(data$bj) == data$bj]
+which(data$bj != round(data$bj))
+data[which(data$bj != round(data$bj)), ]
+
+
+
 # Histogram
 ggplot(data, aes(x = bj)) +
   geom_histogram(binwidth = 5, fill = "darkseagreen", color = "white") +
